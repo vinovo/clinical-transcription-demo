@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">plauid</string>
+    <string name="app_name">Clinical Transcription Demo</string>
     
     <!-- Note detail screen -->
     <string name="loading">Loading…</string>

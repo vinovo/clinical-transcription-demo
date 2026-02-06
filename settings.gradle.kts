@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "plauid"
+rootProject.name = "clinical-transcription-demo"
 include(":app")
  

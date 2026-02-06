@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "demo.nexa.plauid"
+    namespace = "demo.nexa.clinical_transcription_demo"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "demo.nexa.plauid"
+        applicationId = "demo.nexa.clinical_transcription_demo"
         minSdk = 27
         targetSdk = 36
         versionCode = 1
