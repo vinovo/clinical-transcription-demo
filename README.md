@@ -4,10 +4,58 @@ Plaud is a mobile app for capturing **clinical recordings** and turning them int
 
 Transcription (ASR) and summarization (LLM) are powered by the [**Nexa SDK**](https://docs.nexa.ai).
 
-## Prerequisite for Building
+## Building from Source
 
-- Due to Git repo limitation, I am not able to push the Qwen3 4B GGUF file to this repo. If you want to build the app by yourself, you need properly places the following file `app/src/main/assets/nexa_models/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf`.
-    - the best way for you to do this is to download through [Qwen3 4B offical GGUF repo](https://huggingface.co/Qwen/Qwen3-4B-GGUF/blob/main/Qwen3-4B-Q4_K_M.gguf)
+### Prerequisites
+
+- **Git LFS**: This repository uses Git LFS for model files (except Qwen3). Install and set up Git LFS before cloning:
+  ```bash
+  git lfs install
+  ```
+- **Android Studio** (latest stable version recommended)
+- **JDK 17** or higher
+- **Android SDK** with minimum API level 24 (Android 7.0) or higher
+- **Qwen3 4B GGUF model file**: Due to Git repo size limitations, the Qwen3 4B GGUF file is not included in this repository. You must download and place it manually:
+  1. Download `Qwen3-4B-Q4_K_M.gguf` from the [Qwen3 4B official GGUF repo](https://huggingface.co/Qwen/Qwen3-4B-GGUF/blob/main/Qwen3-4B-Q4_K_M.gguf)
+  2. Place the file at: `app/src/main/assets/nexa_models/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf`
+
+### Build Instructions
+
+#### Option 1: Using Android Studio
+
+1. Open Android Studio and select **Open an existing project**
+2. Navigate to the `plaud` directory and open it
+3. Wait for Gradle sync to complete
+4. Then choose one of the following:
+
+   **To run directly on a device/emulator:**
+   - Connect an Android device or start an emulator
+   - Click the **Run** button (▶)
+
+   **To build an APK:**
+   - Select **Build > Build Bundle(s) / APK(s) > Build APK(s)** from the menu
+   - Once complete, the APK will be at: `app/build/outputs/apk/debug/app-debug.apk`
+
+#### Option 2: Using Command Line
+
+1. Navigate to the project directory:
+   ```bash
+   cd plaud
+   ```
+
+2. Make the Gradle wrapper executable (if needed):
+   ```bash
+   chmod +x gradlew
+   ```
+
+3. Build the debug APK:
+   ```bash
+   ./gradlew assembleDebug
+   ```
+
+4. The APK will be generated at: `app/build/outputs/apk/debug/app-debug.apk`
+
+```
 
 ## Core workflow
 

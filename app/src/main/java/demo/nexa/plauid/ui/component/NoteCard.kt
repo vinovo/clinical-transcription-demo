@@ -79,7 +79,6 @@ fun NoteCard(
                     )
                     
                     if (note.isProcessing) {
-                        // Processing tag
                         Row(
                             modifier = Modifier
                                 .height(16.dp)

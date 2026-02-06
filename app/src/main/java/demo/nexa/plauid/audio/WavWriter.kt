@@ -7,19 +7,9 @@ import java.nio.ByteOrder
 
 /**
  * Utility for writing WAV file headers.
- * WAV format: RIFF header + fmt chunk + data chunk + PCM samples
  */
 object WavWriter {
     
-    /**
-     * Write a WAV header to a file that already contains PCM data.
-     * This updates the file in-place by writing the header at the beginning.
-     *
-     * @param file File containing PCM data (will be updated with WAV header)
-     * @param sampleRate Sample rate in Hz (e.g., 16000)
-     * @param channels Number of channels (1 for mono, 2 for stereo)
-     * @param bitsPerSample Bits per sample (typically 16)
-     */
     fun writeWavHeader(
         file: File,
         sampleRate: Int,
@@ -44,15 +34,6 @@ object WavWriter {
         }
     }
     
-    /**
-     * Create a WAV file from PCM data.
-     *
-     * @param outputFile Output WAV file
-     * @param pcmData PCM audio data (16-bit little-endian)
-     * @param sampleRate Sample rate in Hz
-     * @param channels Number of channels
-     * @param bitsPerSample Bits per sample
-     */
     fun createWavFile(
         outputFile: File,
         pcmData: ByteArray,
@@ -75,9 +56,6 @@ object WavWriter {
         }
     }
     
-    /**
-     * Create a 44-byte WAV header.
-     */
     private fun createWavHeader(
         dataSize: Long,
         sampleRate: Int,

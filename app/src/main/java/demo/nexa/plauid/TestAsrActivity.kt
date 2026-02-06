@@ -14,26 +14,7 @@ import java.io.File
 import kotlin.system.measureTimeMillis
 
 /**
- * Temporary test activity for ASR benchmarking.
- * This is a throwaway script - no engineering practices applied.
- * 
- * USAGE:
- * 1. Push 3 test audio files to the device:
- *    adb push test1.wav /data/local/tmp/test1.wav
- *    adb push test2.wav /data/local/tmp/test2.wav
- *    adb push test3.wav "/data/local/tmp/YTDown.com_YouTube_CBT-Role-Play-Complete-Session-Social-An_Media_8K4HW6_MvoU_004_144p.mp3"
- * 
- * 2. Update testAudioPaths below if using different paths
- * 
- * 3. Launch app, tap "TEST ASR" button in the main screen
- * 
- * 4. Tap "Start ASR Benchmark" in the test screen
- * 
- * OUTPUTS:
- * - Inference latency (ms) for each run
- * - RTF (Real Time Factor) for each run and average
- * - Timestamp interval analysis (to see default step size)
- * - Profiling data from Nexa SDK
+ * Test activity for ASR benchmarking.
  */
 class TestAsrActivity : AppCompatActivity() {
     
@@ -41,8 +22,6 @@ class TestAsrActivity : AppCompatActivity() {
     private lateinit var startButton: Button
     private lateinit var scrollView: ScrollView
     
-    // HARDCODE YOUR 3 AUDIO FILE PATHS HERE
-    // Make sure these files exist on the device before running!
     private val testAudioPaths = listOf(
         "/data/local/tmp/jfk.wav",
         "/data/local/tmp/OSR_us_000_0010_16k.wav",
@@ -54,7 +33,6 @@ class TestAsrActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Create simple UI programmatically
         val layout = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             setPadding(32, 32, 32, 32)

@@ -74,13 +74,7 @@ class LlmModelManager(private val context: Context) {
      * @return true if model is available, false if installation failed
      */
     fun ensureModelInstalled(modelType: ModelType): Boolean {
-        // If model already exists, we're done
         if (isModelAvailable(modelType)) {
-            val modelPath = when (modelType) {
-                ModelType.LIQUID_SUMMARIZER -> getLiquidModelPath()
-                ModelType.QWEN_SOAP_CREATOR -> getQwenModelPath()
-            }
-            Log.d(TAG, "${modelType.name} model already installed: ${modelPath.absolutePath}")
             return true
         }
         
@@ -91,23 +85,18 @@ class LlmModelManager(private val context: Context) {
         
         val modelDir = File(modelsDir, modelFolder)
         
-        // Check if model exists in assets
         try {
             val assetFiles = context.assets.list(assetsPath)
             if (assetFiles.isNullOrEmpty()) {
-                Log.w(TAG, "No ${modelType.name} model found in assets at: $assetsPath")
+                Log.w(TAG, "No ${modelType.name} model found in assets")
                 return false
             }
-            
-            Log.d(TAG, "Found ${assetFiles.size} files in assets for ${modelType.name}")
         } catch (e: IOException) {
             Log.w(TAG, "Assets folder not found: $assetsPath", e)
             return false
         }
         
-        // Copy from assets
         return try {
-            // Clean up any partial installation first
             if (modelDir.exists()) {
                 modelDir.deleteRecursively()
             }
@@ -116,16 +105,13 @@ class LlmModelManager(private val context: Context) {
             copyModelFromAssets(assetsPath, modelDir)
             
             val installed = isModelAvailable(modelType)
-            if (installed) {
-                Log.d(TAG, "${modelType.name} model installed successfully: ${modelDir.absolutePath}")
-            } else {
-                Log.w(TAG, "${modelType.name} model installation completed but validation failed")
+            if (!installed) {
+                Log.w(TAG, "${modelType.name} model installation failed validation")
             }
             installed
         } catch (e: Exception) {
             Log.e(TAG, "Failed to install ${modelType.name} model from assets", e)
             
-            // Clean up partial installation
             if (modelDir.exists()) {
                 modelDir.deleteRecursively()
             }

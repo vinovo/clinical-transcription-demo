@@ -9,12 +9,11 @@ import demo.nexa.plauid.data.local.entity.RecordingNoteEntity
 
 /**
  * Room database for the Plauid app.
- * Single-table design keeps things simple for a sample app.
  */
 @Database(
     entities = [RecordingNoteEntity::class],
     version = 2,
-    exportSchema = false // For sample app; enable for production
+    exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     
@@ -26,10 +25,6 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
         
-        /**
-         * Get the singleton database instance.
-         * Thread-safe double-checked locking pattern.
-         */
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: buildDatabase(context).also { INSTANCE = it }
@@ -42,7 +37,6 @@ abstract class AppDatabase : RoomDatabase() {
                 AppDatabase::class.java,
                 DATABASE_NAME
             )
-                // For sample app: destructive migration is fine (data loss acceptable)
                 .fallbackToDestructiveMigration()
                 .build()
         }

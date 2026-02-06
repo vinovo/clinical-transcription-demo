@@ -28,7 +28,7 @@ import demo.nexa.plauid.ui.theme.PlauColors
 
 @Composable
 fun PlaybackWaveformView(
-    amplitudes: List<Float> = emptyList(), // Normalized amplitudes (0.0-1.0)
+    amplitudes: List<Float> = emptyList(),
     currentPositionMs: Long = 0L,
     durationMs: Long = 1L,
     onScrubStart: () -> Unit = {},
@@ -36,7 +36,6 @@ fun PlaybackWaveformView(
     onScrubEndMs: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // Track scrubbing state locally for smooth UI rendering
     var scrubPositionMs by remember { mutableStateOf<Long?>(null) }
     val currentPositionMsState by rememberUpdatedState(currentPositionMs)
     val durationMsState by rememberUpdatedState(durationMs)
@@ -44,8 +43,7 @@ fun PlaybackWaveformView(
     Card(
         modifier = modifier
             .height(180.dp)
-            .pointerInput(Unit) { // Keep gesture alive; use updated state inside
-                // Horizontal scroll/swipe to seek through audio
+            .pointerInput(Unit) {
                 var dragStartMs = 0L
                 var dragTotalPx = 0f
                 var lastTargetMs = 0L
@@ -63,7 +61,6 @@ fun PlaybackWaveformView(
                         scrubPositionMs = null
                     },
                     onDragCancel = {
-                        // On cancel, still commit the position (don't lose the seek)
                         onScrubEndMs(lastTargetMs)
                         scrubPositionMs = null
                     },
@@ -73,14 +70,11 @@ fun PlaybackWaveformView(
                         val effectiveDurationMs = durationMsState
                         if (effectiveDurationMs <= 0L) return@detectHorizontalDragGestures
                         
-                        // Accumulate drag distance
                         dragTotalPx += dragAmount
                         
-                        // Calculate and preview new position
                         val pixelsToMsRatio = effectiveDurationMs.toFloat() / size.width.toFloat()
                         val deltaMs = dragTotalPx * pixelsToMsRatio * 0.6f
                         
-                        // Reverse direction: positive drag (right) = go backward in time
                         val targetMs = (dragStartMs - deltaMs.toLong())
                             .coerceIn(0L, effectiveDurationMs)
                         lastTargetMs = targetMs

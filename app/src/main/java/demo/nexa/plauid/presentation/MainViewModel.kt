@@ -78,11 +78,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         try {
             retriever.setDataSource(getApplication(), uri)
 
-            // Extract duration
             val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
             val durationMs = durationStr?.toLongOrNull() ?: 0L
 
-            // Extract extension with improved reliability
             val extension = detectExtension(uri, retriever)
 
             return Pair(durationMs, extension)
@@ -99,12 +97,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * 4. Default to "m4a"
      */
     private fun detectExtension(uri: Uri, retriever: MediaMetadataRetriever): String {
-        // Strategy 1: Try ContentResolver.getType()
         contentResolver.getType(uri)?.let { mimeType ->
             mimeTypeToExtension(mimeType)?.let { return it }
         }
 
-        // Strategy 2: Try DISPLAY_NAME from content resolver
         contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) {
                 val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
@@ -119,12 +115,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        // Strategy 3: Try MediaMetadataRetriever MIME type
         retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)?.let { mimeType ->
             mimeTypeToExtension(mimeType)?.let { return it }
         }
 
-        // Strategy 4: Default fallback
         return "m4a"
     }
 

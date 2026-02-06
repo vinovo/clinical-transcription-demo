@@ -17,24 +17,7 @@ import kotlinx.coroutines.withContext
 import kotlin.system.measureTimeMillis
 
 /**
- * Temporary test activity for LLM benchmarking.
- * This is a throwaway script - no engineering practices applied.
- * 
- * USAGE:
- * 1. Ensure transcript.txt exists in assets/
- * 2. Launch app, tap "TEST LLM" button
- * 3. Tap "Start LLM Benchmark" in the test screen
- * 
- * BENCHMARK SPEC:
- * - Tests 2 tasks: Summarizer and SOAP Creator
- * - Input lengths: 1000, 2000, 4000 chars
- * - Runs per length: 3
- * - Total runs: 3 lengths × 3 runs × 2 tasks = 18 runs
- * 
- * OUTPUTS:
- * - Inference time (ms) for each run
- * - Time per character (ms/char) for each run
- * - Average time per character for each task
+ * Test activity for LLM benchmarking.
  */
 class TestLlmActivity : AppCompatActivity() {
     
@@ -45,7 +28,6 @@ class TestLlmActivity : AppCompatActivity() {
     private val testLengths = listOf(1000, 2000, 4000)
     private val runsPerLength = 3
     
-    // System prompts (copied from NexaLlmEngine)
     private val summarizerPrompt = """You are summarizing ONE SEGMENT of a therapy session transcript. This segment will be used to create a SOAP note (Subjective, Objective, Assessment, Plan).
 
 Preserve information relevant to SOAP documentation:
@@ -121,7 +103,6 @@ Return only the SOAP note. No explanations, no preamble, no post-notes."""
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Create simple UI programmatically
         val layout = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             setPadding(32, 32, 32, 32)

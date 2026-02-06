@@ -48,12 +48,10 @@ class AsrModelManager(private val context: Context) {
     fun ensureModelInstalled(): Boolean {
         val modelDir = getParakeetModelDir()
         
-        // If model folder already exists and has files, we're done
         if (isParakeetModelAvailable()) {
             return true
         }
         
-        // Check if model exists in assets
         try {
             val assetFiles = context.assets.list(ASSETS_MODEL_PATH)
             if (assetFiles.isNullOrEmpty()) {
@@ -65,9 +63,7 @@ class AsrModelManager(private val context: Context) {
             return false
         }
         
-        // Copy from assets
         return try {
-            // Clean up any partial installation first
             if (modelDir.exists()) {
                 modelDir.deleteRecursively()
             }
@@ -77,7 +73,6 @@ class AsrModelManager(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to install model from assets", e)
             
-            // Clean up partial installation
             if (modelDir.exists()) {
                 modelDir.deleteRecursively()
             }
@@ -95,13 +90,11 @@ class AsrModelManager(private val context: Context) {
         val files = assetManager.list(assetPath) ?: emptyArray()
         
         if (files.isNotEmpty()) {
-            // Directory - recurse into children
             destFile.mkdirs()
             files.forEach { filename ->
                 copyModelFromAssets("$assetPath/$filename", File(destFile, filename))
             }
         } else {
-            // File - copy it
             destFile.parentFile?.mkdirs()
             assetManager.open(assetPath).use { input ->
                 destFile.outputStream().use { output ->

@@ -16,7 +16,7 @@ class PlauApp : Application() {
         // Initialize Nexa SDK once for the entire app lifecycle
         NexaSdk.getInstance().init(this, object : NexaSdk.InitCallback {
             override fun onSuccess() {
-                Log.d(TAG, "Nexa SDK initialized successfully")
+                // SDK initialized
             }
             
             override fun onFailure(reason: String) {

@@ -65,7 +65,6 @@ fun RecordingScreen(
     var permissionGranted by remember { mutableStateOf(false) }
     var showDiscardDialog by remember { mutableStateOf(false) }
     
-    // Permission launcher
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -73,12 +72,10 @@ fun RecordingScreen(
             permissionGranted = true
             viewModel.startRecording()
         } else {
-            // Permission denied, go back
             onBackClick()
         }
     }
     
-    // Check permission and request if needed
     LaunchedEffect(Unit) {
         val permission = Manifest.permission.RECORD_AUDIO
         val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
@@ -94,14 +91,12 @@ fun RecordingScreen(
         }
     }
     
-    // Navigate back when recording is saved
     LaunchedEffect(uiState.recordingSaved) {
         if (uiState.recordingSaved) {
             onRecordingSaved()
         }
     }
     
-    // Cleanup: Discard recording if user navigates away while recording
     DisposableEffect(Unit) {
         onDispose {
             if (uiState.isRecording) {
@@ -110,13 +105,10 @@ fun RecordingScreen(
         }
     }
     
-    // Handle back button press
     val handleBackPress: () -> Unit = {
         if (uiState.isRecording) {
-            // Show confirmation dialog
             showDiscardDialog = true
         } else {
-            // Not recording, safe to go back
             onBackClick()
         }
     }
@@ -129,7 +121,6 @@ fun RecordingScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Top navigation bar
             Row(
                 modifier = Modifier
                     .padding(
@@ -158,7 +149,6 @@ fun RecordingScreen(
                 )
             }
             
-            // Waveform and timer
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -168,7 +158,6 @@ fun RecordingScreen(
             ) {
                 WaveformView(amplitudes = uiState.waveformAmplitudes)
                 
-                // Timer
                 Text(
                     text = formatElapsedTime(uiState.elapsedTimeMs),
                     fontSize = PlauDimens.textSizeLarge,
@@ -179,7 +168,6 @@ fun RecordingScreen(
             }
         }
         
-        // Stop button at bottom center
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -204,13 +192,11 @@ fun RecordingScreen(
             )
         }
         
-        // Loading overlay when processing recording
         if (uiState.isProcessing) {
             LoadingOverlay(message = "Processing recording...")
         }
     }
     
-    // Discard recording confirmation dialog
     if (showDiscardDialog) {
         AlertDialog(
             onDismissRequest = { showDiscardDialog = false },
@@ -233,7 +219,6 @@ fun RecordingScreen(
         )
     }
     
-    // Error dialog
     uiState.errorMessage?.let { error ->
         AlertDialog(
             onDismissRequest = { viewModel.dismissError() },
@@ -250,5 +235,3 @@ fun RecordingScreen(
         )
     }
 }
-
-// Preview removed - requires ViewModel which can't be instantiated in preview

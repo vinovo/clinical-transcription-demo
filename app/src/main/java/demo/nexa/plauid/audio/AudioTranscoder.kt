@@ -41,7 +41,6 @@ class AudioTranscoder {
             extractor = MediaExtractor()
             extractor.setDataSource(sourceFile.absolutePath)
             
-            // Find audio track
             val trackIndex = findAudioTrack(extractor)
             if (trackIndex < 0) {
                 extractor.release()
@@ -51,21 +50,17 @@ class AudioTranscoder {
             extractor.selectTrack(trackIndex)
             val format = extractor.getTrackFormat(trackIndex)
             
-            // Extract audio parameters
             var sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
             var channelCount = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
             val mime = format.getString(MediaFormat.KEY_MIME) ?: "audio/mp4a-latm"
             
-            // Create decoder
             codec = MediaCodec.createDecoderByType(mime)
             codec.configure(format, null, null, 0)
             codec.start()
             
-            // Open output file with space for header (we'll write it at the end)
             outputStream = RandomAccessFile(outputFile, "rw")
-            outputStream.seek(44) // Skip header space
+            outputStream.seek(44)
             
-            // Decode and stream write to file
             val audioInfo = streamDecodeToPcm(
                 extractor = extractor,
                 codec = codec,
@@ -76,7 +71,6 @@ class AudioTranscoder {
             
             val totalDataSize = outputStream.filePointer - 44
             
-            // Write WAV header at the beginning
             outputStream.seek(0)
             val header = createWavHeader(
                 dataSize = totalDataSize,
@@ -86,13 +80,11 @@ class AudioTranscoder {
             )
             outputStream.write(header)
             
-            // Clean up
             outputStream.close()
             codec.stop()
             codec.release()
             extractor.release()
             
-            // Delete source if requested
             if (deleteSource && outputFile.exists()) {
                 sourceFile.delete()
             }
@@ -100,7 +92,6 @@ class AudioTranscoder {
             Result.success(audioInfo.copy(file = outputFile))
             
         } catch (e: Exception) {
-            // Clean up on error
             outputStream?.close()
             codec?.stop()
             codec?.release()
@@ -110,9 +101,6 @@ class AudioTranscoder {
         }
     }
     
-    /**
-     * Find the audio track index in the media file.
-     */
     private fun findAudioTrack(extractor: MediaExtractor): Int {
         for (i in 0 until extractor.trackCount) {
             val format = extractor.getTrackFormat(i)
@@ -145,7 +133,6 @@ class AudioTranscoder {
         val timeoutUs = 10000L
         
         while (!isOutputEOS) {
-            // Feed input to codec
             if (!isInputEOS) {
                 val inputBufferIndex = codec.dequeueInputBuffer(timeoutUs)
                 if (inputBufferIndex >= 0) {
@@ -153,7 +140,6 @@ class AudioTranscoder {
                     if (inputBuffer != null) {
                         val sampleSize = extractor.readSampleData(inputBuffer, 0)
                         if (sampleSize < 0) {
-                            // End of stream
                             codec.queueInputBuffer(
                                 inputBufferIndex, 0, 0, 0,
                                 MediaCodec.BUFFER_FLAG_END_OF_STREAM
@@ -171,12 +157,10 @@ class AudioTranscoder {
                 }
             }
             
-            // Get decoded output
             val outputBufferIndex = codec.dequeueOutputBuffer(bufferInfo, timeoutUs)
             
             when {
                 outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    // Update audio parameters from actual decoder output
                     val outputFormat = codec.outputFormat
                     actualSampleRate = outputFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
                     actualChannelCount = outputFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
@@ -184,12 +168,9 @@ class AudioTranscoder {
                 
                 outputBufferIndex >= 0 -> {
                     val outputBuffer = codec.getOutputBuffer(outputBufferIndex)
-                    
-                    // Skip codec config buffers
                     val isCodecConfig = (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0
                     
                     if (outputBuffer != null && bufferInfo.size > 0 && !isCodecConfig) {
-                        // Write PCM data directly to file, respecting offset and size
                         outputBuffer.position(bufferInfo.offset)
                         outputBuffer.limit(bufferInfo.offset + bufferInfo.size)
                         
@@ -210,13 +191,10 @@ class AudioTranscoder {
         return AudioInfo(
             sampleRate = actualSampleRate,
             channelCount = actualChannelCount,
-            file = File("") // Will be set by caller
+            file = File("")
         )
     }
     
-    /**
-     * Create a 44-byte WAV header.
-     */
     private fun createWavHeader(
         dataSize: Long,
         sampleRate: Int,

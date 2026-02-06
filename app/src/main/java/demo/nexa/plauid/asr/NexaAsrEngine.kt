@@ -37,24 +37,19 @@ class NexaAsrEngine private constructor(
      * @throws Exception if ASR wrapper creation fails
      */
     suspend fun ensureReady() = withContext(Dispatchers.IO) {
-        // Fast path: already initialized
         if (isInitialized && asrWrapper != null) {
             return@withContext
         }
         
-        // Use mutex for coroutine-safe initialization
         initMutex.withLock {
-            // Double-check after acquiring lock
             if (isInitialized && asrWrapper != null) {
                 return@withContext
             }
             
-            // Ensure model is installed from assets
             if (!modelManager.ensureModelInstalled()) {
                 throw IllegalStateException("Failed to install ASR model from assets")
             }
             
-            // Verify model availability
             if (!modelManager.isParakeetModelAvailable()) {
                 throw IllegalStateException(modelManager.getModelStatusMessage())
             }
@@ -63,19 +58,17 @@ class NexaAsrEngine private constructor(
             val modelFilePath = File(modelDir, "files-1-2.nexa").absolutePath
             val modelDirPath = modelDir.absolutePath
             
-            // Build AsrWrapper using Nexa SDK
-            // For NPU models: model_path = specific file, npu_model_folder_path = directory
             val result = AsrWrapper.builder()
                 .asrCreateInput(
                     AsrCreateInput(
                         model_name = "parakeet",
-                        model_path = modelFilePath,  // Point to specific model file
+                        model_path = modelFilePath,
                         config = ModelConfig(
                             max_tokens = 2048,
                             npu_lib_folder_path = context.applicationInfo.nativeLibraryDir,
-                            npu_model_folder_path = modelDirPath  // Point to model directory
+                            npu_model_folder_path = modelDirPath
                         ),
-                        plugin_id = "npu"  // Use NPU backend
+                        plugin_id = "npu"
                     )
                 )
                 .build()
@@ -103,19 +96,17 @@ class NexaAsrEngine private constructor(
         language: String = "en"
     ): Result<String> = withContext(Dispatchers.IO) {
         return@withContext try {
-            // Ensure wrapper is ready
             ensureReady()
             
             val wrapper = asrWrapper ?: return@withContext Result.failure(
                 IllegalStateException("ASR wrapper not initialized")
             )
             
-            // Perform transcription using Nexa SDK's suspend API
             val transcriptionResult = wrapper.transcribe(
                 AsrTranscribeInput(
                     audioPath = audioPath,
                     language = language,
-                    config = null  // Use default config
+                    config = null
                 )
             )
             

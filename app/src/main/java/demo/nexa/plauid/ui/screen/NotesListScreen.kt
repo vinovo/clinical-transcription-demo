@@ -53,21 +53,18 @@ fun NotesListScreen(
     onNoteClick: (NoteUiState) -> Unit,
     onRecordClick: () -> Unit,
     onImportClick: () -> Unit,
-    onTestAsrClick: (() -> Unit)? = null,  // TEMPORARY: for ASR testing
-    onTestLlmClick: (() -> Unit)? = null,  // TEMPORARY: for LLM testing
+    onTestAsrClick: (() -> Unit)? = null,
+    onTestLlmClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues()
     val statusBarsPadding = WindowInsets.statusBars.asPaddingValues()
     val listState = rememberLazyListState()
     
-    // Track the number of notes to detect when a new note is added
     var previousNotesCount by rememberSaveable { mutableIntStateOf(notes.size) }
     
-    // Scroll to top when a new note is added
     LaunchedEffect(notes.size) {
         if (notes.size > previousNotesCount) {
-            // A new note was added, scroll to the top
             listState.animateScrollToItem(0)
         }
         previousNotesCount = notes.size
@@ -81,7 +78,6 @@ fun NotesListScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Title row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -131,7 +127,6 @@ fun NotesListScreen(
                 */
             }
             
-            // Notes list
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
@@ -139,7 +134,7 @@ fun NotesListScreen(
                     start = PlauDimens.spacingMedium,
                     end = PlauDimens.spacingMedium,
                     top = PlauDimens.spacingSmall,
-                    bottom = 120.dp  // Space for FABs
+                    bottom = 120.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -152,7 +147,6 @@ fun NotesListScreen(
             }
         }
         
-        // Record button (centered at bottom)
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -177,7 +171,6 @@ fun NotesListScreen(
             )
         }
         
-        // Import button (bottom right)
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)

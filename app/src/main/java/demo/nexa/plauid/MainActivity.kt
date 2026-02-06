@@ -50,22 +50,18 @@ class MainActivity : ComponentActivity() {
                     var selectedNoteId by remember { mutableStateOf<String?>(null) }
                     val mainViewModel: MainViewModel = viewModel()
                     
-                    // Observe notes from database
                     val notes by repository.observeAllNotes()
                         .map { domainNotes -> domainNotes.map { it.toUiState() } }
                         .collectAsState(initial = emptyList())
                     
-                    // Observe importing state
                     val isImporting by mainViewModel.isImporting.collectAsState()
                     
-                    // Audio file picker for import
                     val importLauncher = rememberLauncherForActivityResult(
                         contract = ActivityResultContracts.GetContent()
                     ) { uri ->
                         uri?.let { mainViewModel.importAudio(it) }
                     }
                     
-                    // Handle UI events from ViewModel
                     LaunchedEffect(Unit) {
                         mainViewModel.uiEvents.collectLatest { event ->
                             when (event) {
@@ -81,17 +77,14 @@ class MainActivity : ComponentActivity() {
                     }
                     
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // Main content
                         when {
                             showRecording -> {
-                                // Use key to force a fresh ViewModel instance each time
                                 val recordingViewModel: RecordingViewModel = viewModel(key = recordingSessionKey.toString())
                                 RecordingScreen(
                                     viewModel = recordingViewModel,
                                     onBackClick = { showRecording = false },
                                     onRecordingSaved = { 
                                         showRecording = false
-                                        // Notes list will auto-update via Flow
                                     }
                                 )
                             }
@@ -106,26 +99,22 @@ class MainActivity : ComponentActivity() {
                                     notes = notes,
                                     onNoteClick = { note -> selectedNoteId = note.id },
                                     onRecordClick = { 
-                                        recordingSessionKey++  // Increment key to get fresh ViewModel
+                                        recordingSessionKey++
                                         showRecording = true 
                                     },
                                     onImportClick = { 
-                                        // Launch file picker for audio files
                                         importLauncher.launch("audio/*")
                                     },
                                     onTestAsrClick = {
-                                        // TEMPORARY: Launch ASR test activity
                                         startActivity(Intent(this@MainActivity, TestAsrActivity::class.java))
                                     },
                                     onTestLlmClick = {
-                                        // TEMPORARY: Launch LLM test activity
                                         startActivity(Intent(this@MainActivity, TestLlmActivity::class.java))
                                     }
                                 )
                             }
                         }
                         
-                        // Loading overlay when importing
                         if (isImporting) {
                             LoadingOverlay(message = "Importing audio...")
                         }

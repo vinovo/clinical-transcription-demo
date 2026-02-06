@@ -47,20 +47,14 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
         private const val ASR_MODEL_RTF = 0.2
     }
     
-    /**
-     * Load a note by ID and prepare for playback.
-     * Observes the note for changes (e.g., transcription status updates).
-     */
     fun loadNote(noteId: String) {
         viewModelScope.launch {
             try {
                 _uiState.value = PlaybackUiState.Loading
                 
-                // Cancel any existing note observation to prevent stale data
                 noteObservationJob?.cancel()
                 noteObservationJob = null
                 
-                // First, load note once to prepare audio player
                 val initialNote = withContext(Dispatchers.IO) {
                     repository.getNoteById(noteId)
                 }
@@ -70,7 +64,6 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
                     return@launch
                 }
                 
-                // Get audio file and prepare player
                 val audioFile = repository.getAudioFile(initialNote)
                 
                 if (!audioFile.exists()) {
@@ -85,19 +78,16 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
                 prepareResult.onSuccess {
                     val duration = audioPlayer.getDuration()
                     
-                    // Now observe the note for reactive updates (transcription status, error messages, etc.)
                     noteObservationJob = viewModelScope.launch {
                         var previousStatus: NoteStatus? = null
                         
                         repository.observeNoteById(noteId).collect { updatedNote ->
                             if (updatedNote != null) {
-                                // Detect transcription status changes
                                 val statusChanged = previousStatus != updatedNote.status
                                 
                                 if (statusChanged) {
                                     when (updatedNote.status) {
                                         NoteStatus.TRANSCRIBING -> {
-                                            // Start background progress (only if not already running)
                                             if (progressManager.getCurrentProgress(noteId, BackgroundProgressManager.ProgressType.TRANSCRIPTION) == null) {
                                                 progressManager.startTranscriptionProgress(
                                                     noteId = noteId,
@@ -105,16 +95,12 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
                                                     rtf = ASR_MODEL_RTF
                                                 )
                                             }
-                                            // Start observing progress
                                             startObservingTranscriptionProgress(noteId)
                                         }
                                         NoteStatus.SUMMARIZING -> {
-                                            // Start observing summary progress
-                                            // Progress simulation is already started by repository.startSummaryGeneration()
                                             startObservingSummaryProgress(noteId)
                                         }
                                         NoteStatus.DONE, NoteStatus.ERROR -> {
-                                            // Stop observing (progress is stopped by repository)
                                             stopObservingTranscriptionProgress()
                                             stopObservingSummaryProgress()
                                         }
@@ -122,17 +108,13 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
                                     }
                                     previousStatus = updatedNote.status
                                 } else if (updatedNote.status == NoteStatus.TRANSCRIBING) {
-                                    // Resume observing if we return to a note that's already transcribing
                                     startObservingTranscriptionProgress(noteId)
                                 } else if (updatedNote.status == NoteStatus.SUMMARIZING) {
-                                    // Resume observing if we return to a note that's already summarizing
                                     startObservingSummaryProgress(noteId)
                                 }
                                 
-                                // Update state with latest note data
                                 val currentState = _uiState.value
                                 if (currentState is PlaybackUiState.Ready) {
-                                    // When updating existing Ready state, preserve/restore progress if transcribing/summarizing
                                     val currentTranscriptionProgress = if (updatedNote.status == NoteStatus.TRANSCRIBING) {
                                         progressManager.getCurrentProgress(noteId, BackgroundProgressManager.ProgressType.TRANSCRIPTION)
                                     } else {
@@ -152,8 +134,6 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
                                         isGeneratingSummary = isGeneratingSummary
                                     )
                                 } else {
-                                    // First time setting Ready state
-                                    // Check if there's existing progress for transcription or summary
                                     val existingTranscriptionProgress = progressManager.getCurrentProgress(noteId, BackgroundProgressManager.ProgressType.TRANSCRIPTION)
                                     val existingSummaryProgress = progressManager.getCurrentProgress(noteId, BackgroundProgressManager.ProgressType.SUMMARY)
                                     val isGeneratingSummary = updatedNote.status == NoteStatus.SUMMARIZING
@@ -173,12 +153,10 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
                         }
                     }
                     
-                    // Set completion listener
                     audioPlayer.setOnCompletionListener {
                         onPlaybackComplete()
                     }
                     
-                    // Auto-start transcription if note hasn't been transcribed yet or previous attempt failed
                     if (initialNote.transcriptText == null && 
                         (initialNote.status == NoteStatus.NEW || initialNote.status == NoteStatus.ERROR)) {
                         repository.startTranscription(noteId)
@@ -194,9 +172,6 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
         }
     }
     
-    /**
-     * Toggle play/pause.
-     */
     fun togglePlayPause() {
         val currentState = _uiState.value
         if (currentState !is PlaybackUiState.Ready) return
@@ -208,9 +183,6 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
         }
     }
     
-    /**
-     * Start playback.
-     */
     private fun play() {
         val currentState = _uiState.value
         if (currentState !is PlaybackUiState.Ready) return
@@ -227,9 +199,6 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
         startProgressUpdates()
     }
     
-    /**
-     * Pause playback.
-     */
     private fun pause() {
         audioPlayer.pause()
         _uiState.update { 
@@ -243,14 +212,10 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
         stopProgressUpdates()
     }
     
-    /**
-     * Seek to a specific position.
-     */
     fun seekTo(positionMs: Long) {
         val currentState = _uiState.value
         if (currentState !is PlaybackUiState.Ready) return
         if (isScrubbing) {
-            // If we're scrubbing, treat this as preview only (no player seek).
             previewScrub(positionMs)
             return
         }
@@ -279,10 +244,8 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
         isScrubbing = true
         wasPlayingBeforeScrub = currentState.isPlaying
 
-        // Stop polling so it doesn't fight the user's drag.
         stopProgressUpdates()
 
-        // Pause playback while scrubbing for deterministic position feedback.
         if (wasPlayingBeforeScrub) {
             audioPlayer.pause()
         }
@@ -292,9 +255,6 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    /**
-     * Preview scrub position (UI-only). Does NOT seek the underlying player.
-     */
     fun previewScrub(positionMs: Long) {
         val currentState = _uiState.value
         if (currentState !is PlaybackUiState.Ready) return
@@ -316,35 +276,26 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
 
         val clampedPosition = commitPositionMs.coerceIn(0L, currentState.durationMs)
         
-        // Seek the player to the final position
         audioPlayer.seekTo(clampedPosition)
         
-        // Update state with the committed position
         _uiState.update {
             if (it is PlaybackUiState.Ready) it.copy(currentPositionMs = clampedPosition) else it
         }
 
         isScrubbing = false
 
-        // Resume playback if it was playing before
         if (wasPlayingBeforeScrub) {
             audioPlayer.play()
             _uiState.update {
                 if (it is PlaybackUiState.Ready) it.copy(isPlaying = true) else it
             }
             startProgressUpdates()
-        } else {
-            // Not resuming playback, but we should still reflect the seek position
-            // The state is already updated above
         }
         wasPlayingBeforeScrub = false
     }
     
-    /**
-     * Start updating playback progress.
-     */
     private fun startProgressUpdates() {
-        stopProgressUpdates() // Cancel any existing job
+        stopProgressUpdates()
         
         progressUpdateJob = viewModelScope.launch {
             while (true) {
@@ -358,22 +309,16 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
                     }
                 }
                 
-                delay(50) // Update every 50ms for smooth UI
+                delay(50)
             }
         }
     }
     
-    /**
-     * Stop progress updates.
-     */
     private fun stopProgressUpdates() {
         progressUpdateJob?.cancel()
         progressUpdateJob = null
     }
     
-    /**
-     * Start observing transcription progress from BackgroundProgressManager.
-     */
     private fun startObservingTranscriptionProgress(noteId: String) {
         transcriptionProgressObserverJob?.cancel()
         
@@ -392,14 +337,10 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
         }
     }
     
-    /**
-     * Stop observing transcription progress.
-     */
     private fun stopObservingTranscriptionProgress() {
         transcriptionProgressObserverJob?.cancel()
         transcriptionProgressObserverJob = null
         
-        // Clear progress from state
         _uiState.update {
             if (it is PlaybackUiState.Ready) {
                 it.copy(transcriptionProgress = null)
@@ -409,9 +350,6 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
         }
     }
     
-    /**
-     * Start observing summary progress from BackgroundProgressManager.
-     */
     private fun startObservingSummaryProgress(noteId: String) {
         summaryProgressObserverJob?.cancel()
         
@@ -430,14 +368,10 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
         }
     }
     
-    /**
-     * Stop observing summary progress.
-     */
     private fun stopObservingSummaryProgress() {
         summaryProgressObserverJob?.cancel()
         summaryProgressObserverJob = null
         
-        // Clear progress from state
         _uiState.update {
             if (it is PlaybackUiState.Ready) {
                 it.copy(summaryProgress = null)
@@ -447,17 +381,10 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
         }
     }
     
-    /**
-     * Stop summary progress simulation (no longer needed with BackgroundProgressManager).
-     * Kept for backward compatibility.
-     */
     private fun stopSummaryProgressSimulation() {
         // No-op: progress is managed by BackgroundProgressManager
     }
     
-    /**
-     * Handle playback completion (reached end).
-     */
     private fun onPlaybackComplete() {
         _uiState.update { 
             if (it is PlaybackUiState.Ready) {
@@ -471,8 +398,6 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
         }
         
         stopProgressUpdates()
-        
-        // Reset to beginning
         audioPlayer.seekTo(0)
     }
     
@@ -487,14 +412,12 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
             return
         }
         
-        // Check if transcript is available
         if (currentState.note.transcriptText.isNullOrEmpty()) {
             return
         }
         
         val noteId = currentState.note.id
         
-        // Set generating flag (will be updated when status changes to SUMMARIZING)
         _uiState.update {
             if (it is PlaybackUiState.Ready) {
                 it.copy(isGeneratingSummary = true, summaryProgress = 0, summaryError = null)
@@ -503,14 +426,9 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
             }
         }
         
-        // Start background summary generation
-        // Progress simulation is started automatically by the repository
         repository.startSummaryGeneration(noteId)
     }
     
-    /**
-     * Clear summary error message.
-     */
     fun clearSummaryError() {
         _uiState.update {
             if (it is PlaybackUiState.Ready) {
@@ -529,14 +447,9 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
     override fun onCleared() {
         super.onCleared()
         stopProgressUpdates()
-        
-        // Cancel note observation
         noteObservationJob?.cancel()
-        
-        // Stop observing progress (but don't stop background progress itself)
         stopObservingTranscriptionProgress()
         stopObservingSummaryProgress()
-        
         audioPlayer.release()
     }
 }

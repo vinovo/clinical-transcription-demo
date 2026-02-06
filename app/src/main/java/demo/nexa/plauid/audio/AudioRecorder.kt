@@ -32,11 +32,11 @@ class AudioRecorder(private val context: Context) {
                 MediaRecorder()
             }.apply {
                 setAudioSource(MediaRecorder.AudioSource.MIC)
-                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4) // M4A container
-                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)    // AAC codec
-                setAudioSamplingRate(16000)  // 16 kHz for speech
-                setAudioEncodingBitRate(64000) // 64 kbps
-                setAudioChannels(1)  // Mono
+                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                setAudioSamplingRate(16000)
+                setAudioEncodingBitRate(64000)
+                setAudioChannels(1)
                 setOutputFile(outputFile.absolutePath)
                 
                 prepare()
@@ -92,12 +92,6 @@ class AudioRecorder(private val context: Context) {
         }
     }
     
-    /**
-     * Get the current maximum amplitude for waveform visualization.
-     * Returns 0 if not recording.
-     *
-     * @return Amplitude value (0-32767 for MediaRecorder)
-     */
     fun getMaxAmplitude(): Int {
         return try {
             if (isRecording && mediaRecorder != null) {
@@ -110,14 +104,8 @@ class AudioRecorder(private val context: Context) {
         }
     }
     
-    /**
-     * Check if currently recording.
-     */
     fun isRecording(): Boolean = isRecording
     
-    /**
-     * Release resources. Should be called when done with the recorder.
-     */
     fun release() {
         try {
             mediaRecorder?.apply {
@@ -127,7 +115,7 @@ class AudioRecorder(private val context: Context) {
                 release()
             }
         } catch (e: Exception) {
-            // Ignore errors during cleanup
+            // Ignore
         } finally {
             mediaRecorder = null
             isRecording = false
@@ -135,9 +123,6 @@ class AudioRecorder(private val context: Context) {
     }
     
     companion object {
-        /**
-         * Maximum amplitude value returned by MediaRecorder.getMaxAmplitude()
-         */
         const val MAX_AMPLITUDE = 32767
     }
 }

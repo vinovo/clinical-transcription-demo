@@ -182,9 +182,7 @@ class NotesRepository(
     suspend fun deleteNote(id: String) {
         val note = dao.getById(id)
         if (note != null) {
-            // Delete audio file first
             audioFileManager.deleteAudioFile(note.audioFileName)
-            // Then delete database record
             dao.deleteById(id)
         }
     }
@@ -215,32 +213,22 @@ class NotesRepository(
     fun startTranscription(noteId: String, language: String = "en") {
         backgroundScope.launch {
             try {
-                // Get the note
                 val note = dao.getById(noteId) ?: run {
-                    Log.w(TAG, "Note not found for transcription: $noteId")
+                    Log.w(TAG, "Note not found for transcription")
                     return@launch
                 }
                 
-                // Update status to TRANSCRIBING
                 dao.updateStatus(noteId, NoteStatus.TRANSCRIBING.name, null)
                 
-                // Get audio file path
                 val audioFile = audioFileManager.getAudioFile(note.audioFileName)
                 if (!audioFile.exists()) {
-                    val error = "Audio file not found: ${audioFile.absolutePath}"
+                    val error = "Audio file not found"
                     Log.e(TAG, error)
                     dao.updateStatus(noteId, NoteStatus.ERROR.name, error)
                     progressManager.stopProgress(noteId, BackgroundProgressManager.ProgressType.TRANSCRIPTION)
                     return@launch
                 }
                 
-                // Get audio duration for progress tracking
-                // Note: waveformData contains duration info, but we can estimate from file
-                // For now, use a rough estimate: file size / (sample_rate * bytes_per_sample * channels)
-                // Typical: 16kHz, 16-bit (2 bytes), mono = 32000 bytes/sec
-                val audioDurationMs = (audioFile.length() * 1000L / 32000L).coerceAtLeast(1000L)
-                
-                // Transcribe using Nexa ASR
                 val result = NexaAsrEngine.getInstance(context).transcribe(
                     audioPath = audioFile.absolutePath,
                     language = language
@@ -250,16 +238,14 @@ class NotesRepository(
                     dao.updateTranscript(noteId, transcript, NoteStatus.DONE.name)
                     progressManager.stopProgress(noteId, BackgroundProgressManager.ProgressType.TRANSCRIPTION)
                 }.onFailure { error ->
-                    val errorMessage = "Transcription failed: ${error.message}"
-                    Log.e(TAG, errorMessage, error)
-                    dao.updateStatus(noteId, NoteStatus.ERROR.name, errorMessage)
+                    Log.e(TAG, "Transcription failed", error)
+                    dao.updateStatus(noteId, NoteStatus.ERROR.name, "Transcription failed: ${error.message}")
                     progressManager.stopProgress(noteId, BackgroundProgressManager.ProgressType.TRANSCRIPTION)
                 }
                 
             } catch (e: Exception) {
-                val errorMessage = "Unexpected error during transcription: ${e.message}"
-                Log.e(TAG, errorMessage, e)
-                dao.updateStatus(noteId, NoteStatus.ERROR.name, errorMessage)
+                Log.e(TAG, "Unexpected error during transcription", e)
+                dao.updateStatus(noteId, NoteStatus.ERROR.name, e.message)
                 progressManager.stopProgress(noteId, BackgroundProgressManager.ProgressType.TRANSCRIPTION)
             }
         }
@@ -283,16 +269,14 @@ class NotesRepository(
      * @return Flow of SoapGenerationResult events
      */
     fun generateSummaryFlow(noteId: String): Flow<SoapGenerationResult> = channelFlow {
-        // Get the note
         val note = dao.getById(noteId) ?: run {
-            val error = "Note not found for summary generation: $noteId"
+            val error = "Note not found for summary generation"
             Log.w(TAG, error)
             send(SoapGenerationResult.Error(IllegalStateException(error)))
             progressManager.stopProgress(noteId, BackgroundProgressManager.ProgressType.SUMMARY)
             return@channelFlow
         }
         
-        // Check if transcript is available
         if (note.transcriptText.isNullOrEmpty()) {
             val error = "No transcript available for summary generation"
             Log.w(TAG, error)
@@ -301,33 +285,27 @@ class NotesRepository(
             return@channelFlow
         }
         
-        Log.d(TAG, "Generating SOAP summary for note: $noteId")
-        
         val summaryBuilder = StringBuilder()
         var hasError = false
         
         try {
-            // Generate summary using Nexa LLM (streaming)
             NexaLlmEngine.getInstance(context).generateSoapSummary(note.transcriptText).collect { result ->
                 when (result) {
                     is SoapGenerationResult.Token -> {
                         summaryBuilder.append(result.text)
-                        send(result)  // Forward token
+                        send(result)
                     }
                     is SoapGenerationResult.Completed -> {
-                        Log.d(TAG, "Summary generated successfully (${summaryBuilder.length} chars)")
                         dao.updateSummary(noteId, summaryBuilder.toString(), NoteStatus.DONE.name)
                         progressManager.stopProgress(noteId, BackgroundProgressManager.ProgressType.SUMMARY)
-                        send(result)  // Forward completion
+                        send(result)
                     }
                     is SoapGenerationResult.Error -> {
                         hasError = true
-                        val errorMessage = "Summary generation failed: ${result.throwable.message}"
-                        Log.e(TAG, errorMessage, result.throwable)
+                        Log.e(TAG, "Summary generation failed", result.throwable)
                         progressManager.stopProgress(noteId, BackgroundProgressManager.ProgressType.SUMMARY)
-                        send(result)  // Forward error
+                        send(result)
                     }
-                    // Forward progress events
                     is SoapGenerationResult.SummarizerStarted,
                     is SoapGenerationResult.SummarizerCompleted,
                     is SoapGenerationResult.SoapCreatorStarted -> {
@@ -336,8 +314,7 @@ class NotesRepository(
                 }
             }
         } catch (e: Exception) {
-            val errorMessage = "Unexpected error during summary generation: ${e.message}"
-            Log.e(TAG, errorMessage, e)
+            Log.e(TAG, "Unexpected error during summary generation", e)
             progressManager.stopProgress(noteId, BackgroundProgressManager.ProgressType.SUMMARY)
             send(SoapGenerationResult.Error(e))
         }
@@ -354,13 +331,11 @@ class NotesRepository(
     fun startSummaryGeneration(noteId: String) {
         backgroundScope.launch {
             try {
-                // Get the note
                 val note = dao.getById(noteId) ?: run {
-                    Log.w(TAG, "Note not found for summary generation: $noteId")
+                    Log.w(TAG, "Note not found for summary generation")
                     return@launch
                 }
                 
-                // Check if transcript is available
                 if (note.transcriptText.isNullOrEmpty()) {
                     val error = "No transcript available for summary generation"
                     Log.w(TAG, error)
@@ -369,15 +344,12 @@ class NotesRepository(
                     return@launch
                 }
                 
-                // Update status to SUMMARIZING
                 dao.updateStatus(noteId, NoteStatus.SUMMARIZING.name, null)
                 
-                // Start progress simulation based on transcript length
                 val transcriptLength = note.transcriptText.length
                 val isShortTranscript = transcriptLength < NexaLlmEngine.SEGMENT_SIZE
                 
                 if (isShortTranscript) {
-                    // Short transcript: Single phase (SOAP creator only)
                     val promptLength = NexaLlmEngine.SOAP_SYSTEM_PROMPT.length +
                                       NexaLlmEngine.SOAP_USER_PREFIX.length
                     
@@ -388,7 +360,6 @@ class NotesRepository(
                         promptLength = promptLength
                     )
                 } else {
-                    // Long transcript: Start Phase 1 (Section summarization)
                     val promptLength = NexaLlmEngine.SECTION_SUMMARIZER_PROMPT.length +
                                       NexaLlmEngine.SUMMARIZER_USER_PREFIX.length
                     
@@ -401,18 +372,14 @@ class NotesRepository(
                     )
                 }
                 
-                Log.d(TAG, "Starting background summary generation for note: $noteId")
-                
                 val summaryBuilder = StringBuilder()
                 
-                // Generate summary using Nexa LLM (streaming)
                 NexaLlmEngine.getInstance(context).generateSoapSummary(note.transcriptText).collect { result ->
                     when (result) {
                         is SoapGenerationResult.Token -> {
                             summaryBuilder.append(result.text)
                         }
                         is SoapGenerationResult.Completed -> {
-                            Log.d(TAG, "Background summary generated successfully (${summaryBuilder.length} chars)")
                             dao.updateSummary(noteId, summaryBuilder.toString(), NoteStatus.DONE.name)
                             progressManager.stopProgress(noteId, BackgroundProgressManager.ProgressType.SUMMARY)
                         }
@@ -422,9 +389,7 @@ class NotesRepository(
                             dao.updateStatus(noteId, NoteStatus.ERROR.name, errorMessage)
                             progressManager.stopProgress(noteId, BackgroundProgressManager.ProgressType.SUMMARY)
                         }
-                        // Handle phase transition for long transcripts
                         is SoapGenerationResult.SummarizerCompleted -> {
-                            // Transition to phase 2 with actual summary length
                             val promptLength = NexaLlmEngine.SOAP_SYSTEM_PROMPT.length +
                                               NexaLlmEngine.SOAP_USER_PREFIX.length
                             
@@ -435,14 +400,12 @@ class NotesRepository(
                                 promptLength = promptLength
                             )
                         }
-                        // Other progress events don't need handling
                         else -> {}
                     }
                 }
             } catch (e: Exception) {
-                val errorMessage = "Unexpected error during background summary generation: ${e.message}"
-                Log.e(TAG, errorMessage, e)
-                dao.updateStatus(noteId, NoteStatus.ERROR.name, errorMessage)
+                Log.e(TAG, "Unexpected error during summary generation", e)
+                dao.updateStatus(noteId, NoteStatus.ERROR.name, e.message)
                 progressManager.stopProgress(noteId, BackgroundProgressManager.ProgressType.SUMMARY)
             }
         }
@@ -457,39 +420,31 @@ class NotesRepository(
      */
     suspend fun generateSummary(noteId: String): Result<String> {
         return try {
-            // Get the note
             val note = dao.getById(noteId) ?: run {
-                val error = "Note not found for summary generation: $noteId"
+                val error = "Note not found for summary generation"
                 Log.w(TAG, error)
                 return Result.failure(IllegalStateException(error))
             }
             
-            // Check if transcript is available
             if (note.transcriptText.isNullOrEmpty()) {
                 val error = "No transcript available for summary generation"
                 Log.w(TAG, error)
                 return Result.failure(IllegalStateException(error))
             }
             
-            Log.d(TAG, "Generating SOAP summary for note: $noteId")
-            
-            // Generate summary using Nexa LLM
             val result = NexaLlmEngine.getInstance(context).generateSoapSummaryBlocking(
                 transcript = note.transcriptText
             )
             
             result.onSuccess { summary ->
-                Log.d(TAG, "Summary generated successfully (${summary.length} chars)")
                 dao.updateSummary(noteId, summary, NoteStatus.DONE.name)
             }.onFailure { error ->
-                val errorMessage = "Summary generation failed: ${error.message}"
-                Log.e(TAG, errorMessage, error)
+                Log.e(TAG, "Summary generation failed", error)
             }
             
             result
         } catch (e: Exception) {
-            val errorMessage = "Unexpected error during summary generation: ${e.message}"
-            Log.e(TAG, errorMessage, e)
+            Log.e(TAG, "Unexpected error during summary generation", e)
             Result.failure(e)
         }
     }

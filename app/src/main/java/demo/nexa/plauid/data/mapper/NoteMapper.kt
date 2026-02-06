@@ -18,8 +18,6 @@ import java.util.Locale
  * - UI State (presentation)
  */
 
-// ==================== Entity <-> Domain ====================
-
 fun RecordingNoteEntity.toDomain(): RecordingNote {
     return RecordingNote(
         id = id,
@@ -52,8 +50,6 @@ fun RecordingNote.toEntity(): RecordingNoteEntity {
     )
 }
 
-// ==================== Domain <-> UI State ====================
-
 private val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.US)
 
 fun RecordingNote.toUiState(): NoteUiState {
@@ -75,26 +71,16 @@ fun RecordingNote.toUiState(): NoteUiState {
     )
 }
 
-// ==================== Convenience: Entity -> UI State (direct) ====================
-
 fun RecordingNoteEntity.toUiState(): NoteUiState {
     return this.toDomain().toUiState()
 }
 
-// ==================== Waveform Data Serialization ====================
-
-/**
- * Serialize waveform data to JSON string for database storage.
- */
 private fun serializeWaveformData(amplitudes: List<Float>): String {
     val json = JSONArray()
     amplitudes.forEach { json.put(it) }
     return json.toString()
 }
 
-/**
- * Parse waveform data from JSON string.
- */
 private fun parseWaveformData(jsonString: String): List<Float> {
     return try {
         val json = JSONArray(jsonString)

@@ -70,24 +70,18 @@ class NexaLlmEngine private constructor(
      */
     suspend fun loadModel(modelType: LlmModelManager.ModelType) = withContext(Dispatchers.IO) {
         modelMutex.withLock {
-            // If the requested model is already loaded, nothing to do
             if (currentModelType == modelType && currentWrapper != null) {
-                Log.d(TAG, "${modelType.name} model already loaded")
                 return@withLock
             }
             
-            // Destroy current model if loaded
             if (currentWrapper != null) {
-                Log.d(TAG, "Destroying ${currentModelType?.name} model before loading ${modelType.name}")
                 currentWrapper?.destroy()
                 currentWrapper = null
                 currentModelType = null
             }
             
-            // Ensure model is installed from assets
             val modelInstalled = modelManager.ensureModelInstalled(modelType)
             
-            // Verify model availability
             if (!modelManager.isModelAvailable(modelType)) {
                 val message = if (modelInstalled) {
                     "${modelType.name} model installation completed but validation failed"
@@ -99,9 +93,8 @@ class NexaLlmEngine private constructor(
             
             val modelConfig = when (modelType) {
                 LlmModelManager.ModelType.LIQUID_SUMMARIZER -> {
-                    // GGUF model configuration
                     val path = modelManager.getLiquidModelPath().absolutePath
-                    val name = ""  // GGUF: keep model_name empty
+                    val name = ""
                     val plugin = "cpu_gpu"
                     val cfg = ModelConfig(
                         nCtx = 8192,
@@ -110,9 +103,8 @@ class NexaLlmEngine private constructor(
                     ModelLoadConfig(path, name, plugin, cfg, "dev0")
                 }
                 LlmModelManager.ModelType.QWEN_SOAP_CREATOR -> {
-                    // GGUF model configuration
                     val path = modelManager.getQwenModelPath().absolutePath
-                    val name = ""  // GGUF: keep model_name empty
+                    val name = ""
                     val plugin = "cpu_gpu"
                     val cfg = ModelConfig(
                         nCtx = 8192,
@@ -122,9 +114,6 @@ class NexaLlmEngine private constructor(
                 }
             }
             
-            Log.d(TAG, "Loading ${modelType.name} model")
-            
-            // Build LlmWrapper using Nexa SDK
             val result = LlmWrapper.builder()
                 .llmCreateInput(
                     LlmCreateInput(
@@ -140,7 +129,6 @@ class NexaLlmEngine private constructor(
             result.onSuccess { wrapper ->
                 currentWrapper = wrapper
                 currentModelType = modelType
-                Log.d(TAG, "${modelType.name} model loaded successfully")
             }.onFailure { error ->
                 Log.e(TAG, "Failed to load ${modelType.name} model", error)
                 throw Exception("Failed to load ${modelType.name}: ${error.message}", error)
@@ -165,72 +153,49 @@ class NexaLlmEngine private constructor(
      */
     fun generateSoapSummary(transcript: String): Flow<SoapGenerationResult> = channelFlow {
         withContext(Dispatchers.IO) {
-            Log.d(TAG, "Starting SOAP summary generation (transcript length: ${transcript.length})")
-            
-            // Determine input for SOAP creator
             val soapInput = if (transcript.length < SEGMENT_SIZE) {
                 transcript
             } else {
-                Log.d(TAG, "Running section summarization")
-                
-                // Emit: Phase 1 started
                 send(SoapGenerationResult.SummarizerStarted)
                 
-                // Load Liquid model for section summarization
                 loadModel(LlmModelManager.ModelType.LIQUID_SUMMARIZER)
                 
-                // Generate summaries
                 val segments = chunkTranscript(transcript, SEGMENT_SIZE)
                 val summaries = generateSectionSummaries(segments)
                 
                 val joinedSummaries = summaries.joinToString("\n\n")
-                Log.d(TAG, "Segment summaries completed (${joinedSummaries.length} chars)")
-                
-                // Emit: Phase 1 completed with actual summary length
                 send(SoapGenerationResult.SummarizerCompleted(joinedSummaries.length))
                 
                 joinedSummaries
             }
             
-            // Emit: Phase 2 starting
             send(SoapGenerationResult.SoapCreatorStarted)
             
-            // Load Qwen GGUF model for SOAP creation (this will automatically destroy Liquid if loaded)
-            Log.d(TAG, "Loading Qwen model for SOAP creation")
             loadModel(LlmModelManager.ModelType.QWEN_SOAP_CREATOR)
             
             val wrapper = currentWrapper ?: throw IllegalStateException("Failed to load Qwen model")
             
-            // Build chat message with SOAP system prompt and input
             val chatMessages = arrayListOf(
                 ChatMessage("system", SOAP_SYSTEM_PROMPT),
                 ChatMessage("user", SOAP_USER_PREFIX + soapInput)
             )
             
-            // Apply chat template
             val templateResult = wrapper.applyChatTemplate(chatMessages.toTypedArray(), null, false)
             
             templateResult.onSuccess { template ->
-                Log.d(TAG, "Chat template applied successfully for SOAP creation")
-                
                 val genConfig = GenerationConfig(maxTokens = 4096)
                 
-                // Generate with streaming
                 wrapper.generateStreamFlow(template.formattedText, genConfig).collect { result ->
                     when (result) {
                         is LlmStreamResult.Token -> {
                             send(SoapGenerationResult.Token(result.text))
                         }
                         is LlmStreamResult.Completed -> {
-                            Log.d(TAG, "SOAP summary generation completed")
-                            
-                            // Reset LLM state after completion for cleanup
                             wrapper.reset()
-                            
                             send(SoapGenerationResult.Completed)
                         }
                         is LlmStreamResult.Error -> {
-                            Log.e(TAG, "SOAP summary generation error", result.throwable)
+                            Log.e(TAG, "SOAP generation error", result.throwable)
                             send(SoapGenerationResult.Error(result.throwable))
                         }
                     }
@@ -255,22 +220,15 @@ class NexaLlmEngine private constructor(
         val wrapper = currentWrapper ?: throw IllegalStateException("Liquid model not loaded")
         val summaries = mutableListOf<String>()
         
-        Log.d(TAG, "Summarizing ${segments.size} segments")
-        
         segments.forEachIndexed { index, segment ->
-            Log.d(TAG, "Summarizing segment ${index + 1}/${segments.size}")
-            
-            // Build chat message with section summarizer prompt
             val chatMessages = arrayListOf(
                 ChatMessage("system", SECTION_SUMMARIZER_PROMPT),
                 ChatMessage("user", SUMMARIZER_USER_PREFIX + segment)
             )
             
-            // Apply chat template
             val templateResult = wrapper.applyChatTemplate(chatMessages.toTypedArray(), null, false)
             
             templateResult.onSuccess { template ->
-                // Generate summary (blocking, non-streaming)
                 val summaryBuilder = StringBuilder()
                 var hasError = false
                 var errorThrowable: Throwable? = null
@@ -283,12 +241,12 @@ class NexaLlmEngine private constructor(
                             summaryBuilder.append(result.text)
                         }
                         is LlmStreamResult.Completed -> {
-                            Log.d(TAG, "Segment ${index + 1} summarization completed")
+                            // Completed
                         }
                         is LlmStreamResult.Error -> {
                             hasError = true
                             errorThrowable = result.throwable
-                            Log.e(TAG, "Segment ${index + 1} summarization error", result.throwable)
+                            Log.e(TAG, "Segment ${index + 1} error", result.throwable)
                         }
                     }
                 }
@@ -300,7 +258,6 @@ class NexaLlmEngine private constructor(
                 val segmentSummary = summaryBuilder.toString()
                 summaries.add(segmentSummary)
                 
-                // Reset LLM state after each segment to clear KV cache
                 wrapper.reset()
             }.onFailure { error ->
                 Log.e(TAG, "Failed to apply chat template for segment ${index + 1}", error)
@@ -385,17 +342,16 @@ class NexaLlmEngine private constructor(
                         summaryBuilder.append(result.text)
                     }
                     is SoapGenerationResult.Completed -> {
-                        Log.d(TAG, "SOAP generation completed")
+                        // Completed
                     }
                     is SoapGenerationResult.Error -> {
                         hasError = true
                         errorThrowable = result.throwable
                     }
-                    // Ignore progress events in blocking version
                     is SoapGenerationResult.SummarizerStarted,
                     is SoapGenerationResult.SummarizerCompleted,
                     is SoapGenerationResult.SoapCreatorStarted -> {
-                        // No-op in blocking mode
+                        // Ignore progress events
                     }
                 }
             }
@@ -406,7 +362,7 @@ class NexaLlmEngine private constructor(
                 Result.success(summaryBuilder.toString())
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error during blocking SOAP generation", e)
+            Log.e(TAG, "Error during SOAP generation", e)
             Result.failure(e)
         }
     }
@@ -428,7 +384,6 @@ class NexaLlmEngine private constructor(
         currentWrapper?.destroy()
         currentWrapper = null
         currentModelType = null
-        Log.d(TAG, "LLM engine released")
     }
     
     companion object {

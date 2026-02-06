@@ -84,7 +84,6 @@ fun NoteDetailScreen(
     modifier: Modifier = Modifier,
     viewModel: NotePlaybackViewModel = viewModel()
 ) {
-    // Load note when screen opens
     LaunchedEffect(noteId) {
         viewModel.loadNote(noteId)
     }

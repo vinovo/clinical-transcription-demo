@@ -18,10 +18,6 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Reusable loading overlay that blocks the entire screen with a semi-transparent background.
- * Shows a circular progress indicator with a message.
- * 
- * @param message The loading message to display
- * @param modifier Optional modifier for the overlay box
  */
 @Composable
 fun LoadingOverlay(

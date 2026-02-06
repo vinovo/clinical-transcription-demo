@@ -18,7 +18,7 @@ class AudioPlayer {
      */
     fun prepare(audioFile: File): Result<Unit> {
         return try {
-            release() // Release any existing player
+            release()
             
             mediaPlayer = MediaPlayer().apply {
                 setDataSource(audioFile.absolutePath)
@@ -33,27 +33,18 @@ class AudioPlayer {
         }
     }
     
-    /**
-     * Start or resume playback.
-     */
     fun play() {
         if (isPrepared) {
             mediaPlayer?.start()
         }
     }
     
-    /**
-     * Pause playback.
-     */
     fun pause() {
         if (isPrepared && mediaPlayer?.isPlaying == true) {
             mediaPlayer?.pause()
         }
     }
     
-    /**
-     * Toggle play/pause.
-     */
     fun togglePlayPause() {
         if (isPlaying()) {
             pause()
@@ -62,18 +53,12 @@ class AudioPlayer {
         }
     }
     
-    /**
-     * Seek to a specific position in milliseconds.
-     */
     fun seekTo(positionMs: Long) {
         if (isPrepared) {
             mediaPlayer?.seekTo(positionMs.toInt())
         }
     }
     
-    /**
-     * Get current playback position in milliseconds.
-     */
     fun getCurrentPosition(): Long {
         return if (isPrepared) {
             mediaPlayer?.currentPosition?.toLong() ?: 0L
@@ -82,9 +67,6 @@ class AudioPlayer {
         }
     }
     
-    /**
-     * Get total duration in milliseconds.
-     */
     fun getDuration(): Long {
         return if (isPrepared) {
             mediaPlayer?.duration?.toLong() ?: 0L
@@ -93,30 +75,21 @@ class AudioPlayer {
         }
     }
     
-    /**
-     * Check if audio is currently playing.
-     */
     fun isPlaying(): Boolean {
         return isPrepared && (mediaPlayer?.isPlaying == true)
     }
     
-    /**
-     * Set a listener for when playback completes.
-     */
     fun setOnCompletionListener(listener: () -> Unit) {
         mediaPlayer?.setOnCompletionListener {
             listener()
         }
     }
     
-    /**
-     * Release the player and free resources.
-     */
     fun release() {
         try {
             mediaPlayer?.release()
         } catch (e: Exception) {
-            // Ignore errors during cleanup
+            // Ignore
         } finally {
             mediaPlayer = null
             isPrepared = false

@@ -32,7 +32,7 @@ private val sampleHeights = listOf(
 
 @Composable
 fun WaveformView(
-    amplitudes: List<Float> = emptyList(), // Normalized amplitudes (0.0-1.0)
+    amplitudes: List<Float> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -53,7 +53,6 @@ fun WaveformView(
                 .padding(vertical = 12.dp, horizontal = 4.dp),
             contentAlignment = Alignment.Center
         ) {
-            // Waveform bars
             Canvas(
                 modifier = Modifier.fillMaxSize()
             ) {
@@ -64,36 +63,26 @@ fun WaveformView(
                 val barCount = (totalWidth / (barWidth + spacing)).toInt()
                 val dpToPx = 1.dp.toPx()
                 val cornerRadius = androidx.compose.ui.geometry.CornerRadius(dpToPx)
-                val maxBarHeight = size.height * 0.8f // Max 80% of canvas height
+                val maxBarHeight = size.height * 0.8f
                 
-                // Use provided amplitudes if available, otherwise use sample data
                 val dataToUse = if (amplitudes.isNotEmpty()) {
                     amplitudes
                 } else {
-                    sampleHeights.map { it / 150f } // Normalize static data
+                    sampleHeights.map { it / 150f }
                 }
                 
-                // Playhead position (center of canvas)
                 val playheadBarIndex = barCount / 2
                 
                 for (i in 0 until barCount) {
                     val x = i * (barWidth + spacing)
-                    
-                    // Recording mode: bars grow from the playhead position
-                    // Bars to the left of playhead show earlier recorded data
-                    // Bars at and to the right of playhead show latest data as it's being recorded
                     val barOffsetFromPlayhead = i - playheadBarIndex
                     
-                    // Map bar to data index
-                    // Positive offset (right of playhead): show most recent data
-                    // Negative offset (left of playhead): show earlier data
                     val dataIndex = if (dataToUse.size > 0) {
-                        // Calculate index from the end of the data array
                         val indexFromEnd = dataToUse.size - 1 + barOffsetFromPlayhead
                         if (indexFromEnd >= 0 && indexFromEnd < dataToUse.size) {
                             indexFromEnd
                         } else {
-                            -1 // No data for this bar yet
+                            -1
                         }
                     } else {
                         -1

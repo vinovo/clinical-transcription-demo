@@ -31,7 +31,6 @@ class WaveformExtractor {
             val extractor = MediaExtractor()
             extractor.setDataSource(audioFile.absolutePath)
             
-            // Find audio track
             val trackIndex = findAudioTrack(extractor)
             if (trackIndex < 0) {
                 extractor.release()
@@ -42,20 +41,16 @@ class WaveformExtractor {
             val format = extractor.getTrackFormat(trackIndex)
             val mime = format.getString(MediaFormat.KEY_MIME) ?: "audio/mp4a-latm"
             
-            // Create decoder
             val codec = MediaCodec.createDecoderByType(mime)
             codec.configure(format, null, null, 0)
             codec.start()
             
-            // Decode and compute peaks
             val pcmSamples = decodeToPcmSamples(extractor, codec)
             
-            // Release resources
             codec.stop()
             codec.release()
             extractor.release()
             
-            // Downsample to target number of peaks
             val peaks = computePeaks(pcmSamples, targetSampleCount)
             
             Result.success(peaks)
@@ -90,12 +85,10 @@ class WaveformExtractor {
         var isOutputEOS = false
         val timeoutUs = 10000L
         
-        // For long files, downsample during decode to save memory
         var sampleCounter = 0
-        val downsampleFactor = 4 // Keep every 4th sample
+        val downsampleFactor = 4
         
         while (!isOutputEOS) {
-            // Feed input
             if (!isInputEOS) {
                 val inputBufferIndex = codec.dequeueInputBuffer(timeoutUs)
                 if (inputBufferIndex >= 0) {
@@ -119,27 +112,22 @@ class WaveformExtractor {
                 }
             }
             
-            // Get output
             val outputBufferIndex = codec.dequeueOutputBuffer(bufferInfo, timeoutUs)
             
             when {
                 outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    // Format changed, continue
+                    // Continue
                 }
                 
                 outputBufferIndex >= 0 -> {
                     val outputBuffer = codec.getOutputBuffer(outputBufferIndex)
-                    
-                    // Skip codec config buffers
                     val isCodecConfig = (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0
                     
                     if (outputBuffer != null && bufferInfo.size > 0 && !isCodecConfig) {
-                        // Respect offset and size from bufferInfo
                         outputBuffer.position(bufferInfo.offset)
                         outputBuffer.limit(bufferInfo.offset + bufferInfo.size)
                         outputBuffer.order(java.nio.ByteOrder.LITTLE_ENDIAN)
                         
-                        // Downsample to save memory (keep every Nth sample)
                         while (outputBuffer.remaining() >= 2) {
                             val sample = outputBuffer.short
                             if (sampleCounter % downsampleFactor == 0) {
@@ -182,7 +170,6 @@ class WaveformExtractor {
             
             if (startIdx >= samples.size) break
             
-            // Find max absolute amplitude in this bin
             var maxAmplitude = 0
             for (j in startIdx until endIdx) {
                 val absValue = abs(samples[j].toInt())
@@ -191,7 +178,6 @@ class WaveformExtractor {
                 }
             }
             
-            // Normalize to 0.0-1.0 (Short.MAX_VALUE = 32767)
             val normalized = maxAmplitude.toFloat() / Short.MAX_VALUE.toFloat()
             peaks.add(normalized.coerceIn(0f, 1f))
         }
