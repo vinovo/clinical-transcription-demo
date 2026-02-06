@@ -46,6 +46,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     var showRecording by remember { mutableStateOf(false) }
+                    var recordingSessionKey by remember { mutableStateOf(0) }
                     var selectedNoteId by remember { mutableStateOf<String?>(null) }
                     val mainViewModel: MainViewModel = viewModel()
                     
@@ -83,7 +84,8 @@ class MainActivity : ComponentActivity() {
                         // Main content
                         when {
                             showRecording -> {
-                                val recordingViewModel: RecordingViewModel = viewModel()
+                                // Use key to force a fresh ViewModel instance each time
+                                val recordingViewModel: RecordingViewModel = viewModel(key = recordingSessionKey.toString())
                                 RecordingScreen(
                                     viewModel = recordingViewModel,
                                     onBackClick = { showRecording = false },
@@ -103,7 +105,10 @@ class MainActivity : ComponentActivity() {
                                 NotesListScreen(
                                     notes = notes,
                                     onNoteClick = { note -> selectedNoteId = note.id },
-                                    onRecordClick = { showRecording = true },
+                                    onRecordClick = { 
+                                        recordingSessionKey++  // Increment key to get fresh ViewModel
+                                        showRecording = true 
+                                    },
                                     onImportClick = { 
                                         // Launch file picker for audio files
                                         importLauncher.launch("audio/*")

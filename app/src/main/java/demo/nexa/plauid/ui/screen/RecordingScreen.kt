@@ -78,11 +78,8 @@ fun RecordingScreen(
         }
     }
     
-    // Reset state and check permission on screen entry
+    // Check permission and request if needed
     LaunchedEffect(Unit) {
-        // Reset ViewModel state to ensure clean state on each entry
-        viewModel.resetState()
-        
         val permission = Manifest.permission.RECORD_AUDIO
         val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
             context,
