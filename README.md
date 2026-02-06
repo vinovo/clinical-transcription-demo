@@ -4,6 +4,15 @@ Plaud is a mobile app for capturing **clinical recordings** and turning them int
 
 Transcription (ASR) and summarization (LLM) are powered by the [**Nexa SDK**](https://docs.nexa.ai).
 
+## Install from APK
+
+```
+# Download: https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/android-demo-release/plaud-demo.apk
+adb install plaud-demo.apk
+```
+
+*Note: this is a debug build of the current project.
+
 ## Building from Source
 
 ### Prerequisites
@@ -38,24 +47,17 @@ Transcription (ASR) and summarization (LLM) are powered by the [**Nexa SDK**](ht
 
 #### Option 2: Using Command Line
 
-1. Navigate to the project directory:
-   ```bash
-   cd plaud
-   ```
-
-2. Make the Gradle wrapper executable (if needed):
+1. Make the Gradle wrapper executable (if needed):
    ```bash
    chmod +x gradlew
    ```
 
-3. Build the debug APK:
+2. Build the debug APK:
    ```bash
    ./gradlew assembleDebug
    ```
 
-4. The APK will be generated at: `app/build/outputs/apk/debug/app-debug.apk`
-
-```
+3. The APK will be generated at: `app/build/outputs/apk/debug/app-debug.apk`
 
 ## Core workflow
 
