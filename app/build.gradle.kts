@@ -43,9 +43,6 @@ android {
     }
 }
 
-val bridgePathExist = gradle.extra["bridgePathExist"] as Boolean
-println("Using local bridge library: $bridgePathExist")
-
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -75,11 +72,7 @@ dependencies {
     implementation(libs.compose.richtext.ui.material3)
     
     // Nexa SDK for ASR and LLM
-    if (bridgePathExist) {
-        implementation(project(":bridgeLib"))
-    } else {
-        implementation("ai.nexa:core:0.0.20")
-    }
+    implementation("ai.nexa:core:0.0.21")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

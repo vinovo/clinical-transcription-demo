@@ -203,9 +203,9 @@ private fun NoteDetailContent(
     val createdDate = formatDateForDisplay(date)
     
     // Format duration and current time consistently
-    // If duration has hours, both should show hours; otherwise neither should
+    // Always show hours for duration to match the "00:00:00" start timestamp in transcription
+    val duration = formatElapsedTime(state.durationMs, forceHours = true)
     val durationHasHours = state.durationMs >= 3600000 // 1 hour in ms
-    val duration = formatElapsedTime(state.durationMs, forceHours = false)
     val currentTime = formatElapsedTime(state.currentPositionMs, forceHours = durationHasHours)
     val statusBarsPadding = WindowInsets.statusBars.asPaddingValues()
     val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues()
