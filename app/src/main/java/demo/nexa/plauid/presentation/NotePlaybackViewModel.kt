@@ -127,16 +127,30 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
                                     }
                                     val isGeneratingSummary = updatedNote.status == NoteStatus.SUMMARIZING
                                     
+                                    val summaryError = if (updatedNote.status == NoteStatus.ERROR && updatedNote.summaryText == null) {
+                                        updatedNote.errorMessage
+                                    } else {
+                                        null
+                                    }
+                                    
                                     _uiState.value = currentState.copy(
                                         note = updatedNote,
                                         transcriptionProgress = currentTranscriptionProgress,
                                         summaryProgress = currentSummaryProgress,
-                                        isGeneratingSummary = isGeneratingSummary
+                                        isGeneratingSummary = isGeneratingSummary,
+                                        summaryError = summaryError
                                     )
                                 } else {
                                     val existingTranscriptionProgress = progressManager.getCurrentProgress(noteId, BackgroundProgressManager.ProgressType.TRANSCRIPTION)
                                     val existingSummaryProgress = progressManager.getCurrentProgress(noteId, BackgroundProgressManager.ProgressType.SUMMARY)
                                     val isGeneratingSummary = updatedNote.status == NoteStatus.SUMMARIZING
+                                    
+                                    // Show error message if status is ERROR and there's no summary yet
+                                    val summaryError = if (updatedNote.status == NoteStatus.ERROR && updatedNote.summaryText == null) {
+                                        updatedNote.errorMessage
+                                    } else {
+                                        null
+                                    }
                                     
                                     _uiState.value = PlaybackUiState.Ready(
                                         note = updatedNote,
@@ -146,7 +160,8 @@ class NotePlaybackViewModel(application: Application) : AndroidViewModel(applica
                                         waveformAmplitudes = updatedNote.waveformData ?: emptyList(),
                                         transcriptionProgress = if (updatedNote.status == NoteStatus.TRANSCRIBING) existingTranscriptionProgress else null,
                                         isGeneratingSummary = isGeneratingSummary,
-                                        summaryProgress = if (isGeneratingSummary) existingSummaryProgress else null
+                                        summaryProgress = if (isGeneratingSummary) existingSummaryProgress else null,
+                                        summaryError = summaryError
                                     )
                                 }
                             }

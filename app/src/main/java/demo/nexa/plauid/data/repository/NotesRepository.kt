@@ -272,6 +272,7 @@ class NotesRepository(
         val note = dao.getById(noteId) ?: run {
             val error = "Note not found for summary generation"
             Log.w(TAG, error)
+            dao.updateStatus(noteId, NoteStatus.ERROR.name, error)
             send(SoapGenerationResult.Error(IllegalStateException(error)))
             progressManager.stopProgress(noteId, BackgroundProgressManager.ProgressType.SUMMARY)
             return@channelFlow
@@ -280,6 +281,7 @@ class NotesRepository(
         if (note.transcriptText.isNullOrEmpty()) {
             val error = "No transcript available for summary generation"
             Log.w(TAG, error)
+            dao.updateStatus(noteId, NoteStatus.ERROR.name, error)
             send(SoapGenerationResult.Error(IllegalStateException(error)))
             progressManager.stopProgress(noteId, BackgroundProgressManager.ProgressType.SUMMARY)
             return@channelFlow
@@ -302,7 +304,9 @@ class NotesRepository(
                     }
                     is SoapGenerationResult.Error -> {
                         hasError = true
-                        Log.e(TAG, "Summary generation failed", result.throwable)
+                        val errorMessage = "Summary generation failed: ${result.throwable.message}"
+                        Log.e(TAG, errorMessage, result.throwable)
+                        dao.updateStatus(noteId, NoteStatus.ERROR.name, errorMessage)
                         progressManager.stopProgress(noteId, BackgroundProgressManager.ProgressType.SUMMARY)
                         send(result)
                     }
@@ -314,7 +318,9 @@ class NotesRepository(
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error during summary generation", e)
+            val errorMessage = "Unexpected error during summary generation: ${e.message}"
+            Log.e(TAG, errorMessage, e)
+            dao.updateStatus(noteId, NoteStatus.ERROR.name, errorMessage)
             progressManager.stopProgress(noteId, BackgroundProgressManager.ProgressType.SUMMARY)
             send(SoapGenerationResult.Error(e))
         }
